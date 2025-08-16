@@ -1,0 +1,468 @@
+openapi: 3.1.0
+info:
+  title: Lottery Admin Backend API
+  description: API para la plataforma administrativa de bancas de lotería dominicanas
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.lottery-admin.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        nombre:
+          type: string
+        rol:
+          type: string
+          enum: [admin, supervisor, operador]
+        estado:
+          type: string
+          enum: [activo, inactivo]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Banca:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        ubicacion:
+          type: string
+        estado:
+          type: string
+          enum: [activa, inactiva]
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+            format: ipv4
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateBanca:
+      type: object
+      required:
+        - nombre
+        - ubicacion
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+        ubicacion:
+          type: string
+          minLength: 5
+          maxLength: 200
+        estado:
+          type: string
+          enum: [activa, inactiva]
+          default: activa
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+            format: ipv4
+
+    Vendedor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nombre:
+          type: string
+        cedula:
+          type: string
+          pattern: "^\\d{11}$"
+        telefono:
+          type: string
+        estado:
+          type: string
+          enum: [activo, inactivo]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Jugada:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        banca_id:
+          type: string
+          format: uuid
+        vendedor_id:
+          type: string
+          format: uuid
+        sorteo_id:
+          type: string
+          format: uuid
+        fecha_hora:
+          type: string
+          format: date-time
+        numeros:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 99
+        monto:
+          type: number
+          format: decimal
+        estado:
+          type: string
+          enum: [valida, anulada]
+        premio:
+          type: number
+          format: decimal
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the API is running
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+
+  /auth/login:
+    post:
+      summary: User login
+      description: Authenticate user with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/Usuario'
+                      session:
+                        type: object
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      summary: Get current user profile
+      description: Get authenticated user's profile information
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Usuario'
+
+  /bancas:
+    get:
+      summary: List bancas
+      description: Get paginated list of bancas with optional filters
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [activa, inactiva]
+      responses:
+        '200':
+          description: List of bancas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Banca'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      summary: Create banca
+      description: Create a new banca (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBanca'
+      responses:
+        '201':
+          description: Banca created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Banca'
+
+  /bancas/{id}:
+    get:
+      summary: Get banca by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Banca details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Banca'
+        '404':
+          description: Banca not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /jugadas:
+    get:
+      summary: List jugadas
+      description: Get paginated list of jugadas with filters
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: fecha_desde
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: fecha_hasta
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: banca_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: vendedor_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: sorteo_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [valida, anulada]
+        - name: numero
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 99
+      responses:
+        '200':
+          description: List of jugadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Jugada'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+
+    post:
+      summary: Create jugada
+      description: Create a new bet/jugada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - banca_id
+                - vendedor_id
+                - sorteo_id
+                - numeros
+                - monto
+              properties:
+                banca_id:
+                  type: string
+                  format: uuid
+                vendedor_id:
+                  type: string
+                  format: uuid
+                sorteo_id:
+                  type: string
+                  format: uuid
+                numeros:
+                  type: array
+                  items:
+                    type: integer
+                    minimum: 0
+                    maximum: 99
+                  minItems: 1
+                monto:
+                  type: number
+                  format: decimal
+                  minimum: 0.01
+      responses:
+        '201':
+          description: Jugada created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Jugada'
