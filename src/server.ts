@@ -21,10 +21,12 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: env.CORS_ORIGIN.split(',').map(origin => origin.trim()),
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: env.CORS_ORIGIN.split(',').map((origin) => origin.trim()),
+    credentials: true,
+  }),
+);
 
 // Trust proxy if configured
 if (env.TRUST_PROXY) {
