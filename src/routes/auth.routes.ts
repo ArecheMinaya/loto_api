@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthService } from '@/modules/auth/auth.service';
 import { authGuard } from '@/middlewares/auth';
 import { createResponse } from '@/shared/pagination';
+import { RegisterUsuarioSchema } from '@/domain/schemas';
 
 const router = Router();
 const authService = new AuthService();
@@ -11,6 +12,22 @@ const authService = new AuthService();
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
+});
+
+// POST /auth/register
+router.post('/register', async (req, res, next) => {
+  try {
+    const userData = RegisterUsuarioSchema.parse(req.body);
+    const result = await authService.register(userData);
+    
+    res.status(201).json(createResponse({
+      user: result.user,
+      session: result.session,
+      message: 'Usuario registrado exitosamente',
+    }));
+  } catch (error) {
+    next(error);
+  }
 });
 
 // POST /auth/login

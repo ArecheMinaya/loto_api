@@ -165,6 +165,7 @@ docker run -d -p 8080:8080 --env-file .env lottery-admin-backend
 ## 📝 API Endpoints
 
 ### Autenticación
+- `POST /auth/register` - Registrar nuevo usuario
 - `POST /auth/login` - Iniciar sesión
 - `GET /auth/me` - Perfil del usuario
 - `POST /auth/logout` - Cerrar sesión
@@ -266,6 +267,16 @@ TRUST_PROXY=true
 ### Ejemplos de Uso
 
 ```bash
+# Registrar nuevo usuario
+curl -X POST http://localhost:8080/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email":"nuevo@ejemplo.com",
+    "password":"password123",
+    "nombre":"Nuevo Usuario",
+    "rol":"operador"
+  }'
+
 # Login
 curl -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \

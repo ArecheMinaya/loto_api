@@ -98,6 +98,13 @@ export const CreateResultadoSchema = z.object({
   fuente: z.nativeEnum(FuenteResultado).default(FuenteResultado.MANUAL),
 });
 
+export const RegisterUsuarioSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
+  nombre: z.string().min(2).max(100),
+  rol: z.nativeEnum(Role).default(Role.OPERADOR),
+});
+
 // Jugada
 export const JugadaSchema = z.object({
   id: z.string().uuid(),
@@ -140,6 +147,7 @@ export const SortSchema = z.object({
 // Export tipos inferidos
 export type Usuario = z.infer<typeof UsuarioSchema>;
 export type CreateUsuario = z.infer<typeof CreateUsuarioSchema>;
+export type RegisterUsuario = z.infer<typeof RegisterUsuarioSchema>;
 export type Banca = z.infer<typeof BancaSchema>;
 export type CreateBanca = z.infer<typeof CreateBancaSchema>;
 export type UpdateBanca = z.infer<typeof UpdateBancaSchema>;
